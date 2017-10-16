@@ -1,0 +1,6 @@
+[package]
+name = "pcoalesce"
+version = "0.1.0"
+authors = ["Alan C <digikata@gmail.com>"]
+
+[dependencies]
