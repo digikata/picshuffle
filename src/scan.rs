@@ -21,7 +21,11 @@ pub fn hash_file(fname: &str) -> Vec<u8>
         h.input(&buf[0..nbytes]);
     }
 
+    println!("{:?}", h.output_bytes());
     let mut out = Vec::with_capacity(h.output_bytes());
+    for _ in 0..h.output_bytes() {
+        out.push(0);
+    }
     h.result(&mut out.as_mut_slice());
     out
 }
@@ -38,7 +42,7 @@ pub fn scan_path(dir: &str) {
         if let Ok(p) = res {
             if let Some(ft) = p.file_type() {
                 if ft.is_file() {
-                    let str = p.path().to_str().expect("invalide file path");
+                    let str = p.path().to_str().expect("invalid file path");
                     vdat.push(String::from(str))
                 }
             }
