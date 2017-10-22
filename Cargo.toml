@@ -1,6 +1,7 @@
 [package]
+authors = ["Alan C <digikata@gmail.com>"]
 name = "pcoalesce"
 version = "0.1.0"
-authors = ["Alan C <digikata@gmail.com>"]
 
 [dependencies]
+ignore = "0.2.2"
