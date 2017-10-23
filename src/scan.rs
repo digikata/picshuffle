@@ -64,7 +64,7 @@ pub fn scan_path(dir: &str) {
 mod test {
 
     #[test]
-    fn scan_list() {
+    fn t_scan_path() {
         use scan::scan_path;
 
         let refdir = "test/ref";
