@@ -32,8 +32,8 @@ pub fn hash_file(fname: &str) -> Vec<u8>
 }
 
 
-pub fn scan_path(dir: &str) {
-    
+pub fn scan_path<'a>(dir: &str) -> Vec<(String, Vec<u8>)>
+{
     let walk = WalkBuilder::new(dir);
 
     let mut vdat: Vec<String> = Vec::new();
@@ -50,13 +50,11 @@ pub fn scan_path(dir: &str) {
         }
     }
     
-    let mut hashes: Vec<(&str, Vec<u8>)> = Vec::new();
+    let mut hashes: Vec<(String, Vec<u8>)> = Vec::new();
     for p in vdat.iter() {
-        
-        let h = hash_file(p);
-        println!("{:?} {:?}", p, h);
-        hashes.push((p, h));
+        hashes.push((p.clone(), hash_file(p)));
     }
+    hashes
 }
 
 
@@ -68,6 +66,25 @@ mod test {
         use scan::scan_path;
 
         let refdir = "test/ref";
-        scan_path(refdir);
+        let sinfo = scan_path(refdir);
+        // for ent in sinfo.iter() {
+        //     let p = &ent.0;
+        //     let h = &ent.1;
+        //     println!("{:?} {:?}", p, h);
+        // }
+
+        use std::collections::HashMap;
+        let mut hm = HashMap::new();
+        for ent in sinfo.iter() {
+            let p = &ent.0;
+            let h = &ent.1;
+            println!("{:?} {:?}", p, h);
+            if hm.contains_key(h) {
+                println!("repeated {:?} {:?}", p, h);
+            } else {
+                hm.insert(h, p);
+            }
+        }
+
     }
 }
