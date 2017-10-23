@@ -21,11 +21,12 @@ pub fn hash_file(fname: &str) -> Vec<u8>
         h.input(&buf[0..nbytes]);
     }
 
-    println!("{:?}", h.output_bytes());
-    let mut out = Vec::with_capacity(h.output_bytes());
-    for _ in 0..h.output_bytes() {
-        out.push(0);
-    }
+    let mut out = vec![0; h.output_bytes()];
+    // println!("{:?}", h.output_bytes());
+    // let mut out = Vec::with_capacity(h.output_bytes);
+    // for _ in 0..h.output_bytes() {
+    //     out.push(0);
+    // }
     h.result(&mut out.as_mut_slice());
     out
 }
