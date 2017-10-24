@@ -7,6 +7,8 @@ use crypto::sha2::Sha256;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
+
 
 pub fn hash_file(fname: &str) -> Vec<u8>
 {
@@ -31,8 +33,9 @@ pub fn hash_file(fname: &str) -> Vec<u8>
     out
 }
 
+pub type ScanData = Vec<(String, Vec<u8>)>;
 
-pub fn scan_path<'a>(dir: &str) -> Vec<(String, Vec<u8>)>
+pub fn scan_path(dir: &str) -> ScanData
 {
     let walk = WalkBuilder::new(dir);
 
@@ -50,13 +53,44 @@ pub fn scan_path<'a>(dir: &str) -> Vec<(String, Vec<u8>)>
         }
     }
     
-    let mut hashes: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut sd: ScanData = Vec::new();
     for p in vdat.iter() {
-        hashes.push((p.clone(), hash_file(p)));
+        sd.push((p.clone(), hash_file(p)));
     }
-    hashes
+    sd
 }
 
+
+pub type FileList = Vec<(String, String)>;
+
+/// filter out repeated files based on their hash
+/// and transform it to (src, dst) paths
+pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> FileList
+{
+    let mut filtered: FileList = Vec::new();
+
+    use std::collections::HashMap;
+    let mut hm = HashMap::new();
+    for ent in scandata.iter() {
+        let p = &ent.0;
+        let h = &ent.1;
+        if hm.contains_key(h) {
+            continue;
+        } else {
+            hm.insert(h, p);
+            let src = (*p).clone();
+
+            // create output path
+            let mut pdst = PathBuf::from(outdir);
+            let psrc = PathBuf::from(p);
+            pdst.push(psrc.file_name().expect("bad file name"));
+            let dst = String::from(pdst.to_str().unwrap());
+
+            filtered.push((src, dst));
+        }
+    }
+    filtered
+}
 
 #[cfg(test)]
 mod test {
@@ -78,13 +112,35 @@ mod test {
         for ent in sinfo.iter() {
             let p = &ent.0;
             let h = &ent.1;
-            println!("{:?} {:?}", p, h);
+            //println!("{:?} {:?}", p, h);
             if hm.contains_key(h) {
-                println!("repeated {:?} {:?}", p, h);
+                //println!("repeated {:?} {:?}", p, h);
             } else {
                 hm.insert(h, p);
             }
         }
-
     }
+
+    #[test]
+    fn filter_repeated() {
+        use scan::scan_path;
+        use scan::filter_repeated;
+
+        let refdir = "test/ref";
+        let outdir = "test/out";
+
+        let sinfo = scan_path(refdir);
+        // for ent in sinfo.iter() {
+        //     let p = &ent.0;
+        //     let h = &ent.1;
+        //     println!("{:?} {:?}", p, h);
+        // }
+
+        let filt = filter_repeated(&sinfo, outdir);
+        for ent in filt.iter() {
+            let src = &ent.0;
+            let dst = &ent.1;
+             println!("{:20} -> {}", src, dst);
+        }
+    }    
 }
