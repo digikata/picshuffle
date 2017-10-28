@@ -9,6 +9,8 @@ use clap::{ App, Arg };
 mod actions;
 use actions::scan_path;
 use actions::filter_repeated;
+use actions::exec_copies;
+
 
 fn main() {
     let app = App::new("pcoalesce")
@@ -29,6 +31,7 @@ fn main() {
     let dir = opts.value_of("dir").expect("missing value");
     println!("scan {}", dir);
 
+    let mut opt_dry_run = false;
     let outdir = match opts.value_of("outdir") {
         Some(od) => {
             println!("  output to: {}\n", od);
@@ -36,12 +39,18 @@ fn main() {
         },
         None => {
             println!("  dry run, no output\n");
+            opt_dry_run = true;
             String::new()
         }
     };
 
-    let fdat = filter_repeated(&scan_path(dir), &outdir);
-    for ent in fdat.iter() {
-        println!("{:?}", ent.0);
+    let cplist = filter_repeated(&scan_path(dir), &outdir);
+
+    if opt_dry_run {
+        for cpair in cplist.iter() {
+            println!("copy {} to {}", cpair.0, cpair.1);
+        }
+    } else {
+        exec_copies(&cplist);
     }
 }

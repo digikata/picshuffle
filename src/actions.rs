@@ -6,8 +6,9 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 
 use std::fs::File;
+use std::fs::create_dir_all;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{ Path, PathBuf };
 
 
 pub fn hash_file(fname: &str) -> Vec<u8>
@@ -92,6 +93,31 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
     clist
 }
 
+
+pub fn exec_copies(cplist: &CopyList) {
+    use std::fs::copy;
+
+    for cpair in cplist.iter() {
+        let ppair = (Path::new(&cpair.0), Path::new(&cpair.1));
+
+        let dst = ppair.1;
+        if !dst.exists() {
+            let parent_dir = dst.parent().expect("couldn't find parent");
+            if !parent_dir.exists() {
+                if let Err(edir) = create_dir_all(parent_dir) {
+                    println!("error creating {:?}", edir);
+                    return;
+                }
+            }
+        }
+
+        if let Err(e) = copy(ppair.0, ppair.1) {
+            println!("err {:?}", e);
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod test {
 
@@ -143,4 +169,32 @@ mod test {
              println!("{:20} -> {}", src, dst);
         }
     }    
+
+    #[test]
+    fn t_exec_copy() {
+        use actions::*;
+
+        let refdir = "test/ref";
+        let outdir = "test/out";
+
+        let sinfo = scan_path(refdir);
+        let cplist = filter_repeated(&sinfo, outdir);
+        exec_copies(&cplist);
+
+        let expect_files = vec![
+            "test/out/1",
+            "test/out/10",
+            "test/out/foo",
+        ];
+
+        
+        // cleanup
+        use std::fs;
+        match fs::remove_dir_all(outdir) {
+            Ok(_) => (),
+            Err(_) => {
+                assert!(false); // fail cleanup
+            }
+        }
+    }
 }
