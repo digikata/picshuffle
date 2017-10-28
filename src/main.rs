@@ -6,9 +6,9 @@ extern crate clap;
 
 use clap::{ App, Arg };
 
-mod scan;
-use scan::scan_path;
-use scan::filter_repeated;
+mod actions;
+use actions::scan_path;
+use actions::filter_repeated;
 
 fn main() {
     let app = App::new("pcoalesce")
@@ -29,7 +29,6 @@ fn main() {
     let dir = opts.value_of("dir").expect("missing value");
     println!("scan {}", dir);
 
-
     let outdir = match opts.value_of("outdir") {
         Some(od) => {
             println!("  output to: {}\n", od);
@@ -45,5 +44,4 @@ fn main() {
     for ent in fdat.iter() {
         println!("{:?}", ent.0);
     }
-
 }

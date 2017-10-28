@@ -60,14 +60,14 @@ pub fn scan_path(dir: &str) -> ScanData
     sd
 }
 
-
-pub type FileList = Vec<(String, String)>;
+pub type CopyPair = (String, String);
+pub type CopyList = Vec<CopyPair>;
 
 /// filter out repeated files based on their hash
 /// and transform it to (src, dst) paths
-pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> FileList
+pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
 {
-    let mut filtered: FileList = Vec::new();
+    let mut clist: CopyList = Vec::new();
 
     use std::collections::HashMap;
     let mut hm = HashMap::new();
@@ -86,10 +86,10 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> FileList
             pdst.push(psrc.file_name().expect("bad file name"));
             let dst = String::from(pdst.to_str().unwrap());
 
-            filtered.push((src, dst));
+            clist.push((src, dst));
         }
     }
-    filtered
+    clist
 }
 
 #[cfg(test)]
@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn t_scan_path() {
-        use scan::scan_path;
+        use actions::scan_path;
 
         let refdir = "test/ref";
         let sinfo = scan_path(refdir);
@@ -122,9 +122,9 @@ mod test {
     }
 
     #[test]
-    fn filter_repeated() {
-        use scan::scan_path;
-        use scan::filter_repeated;
+    fn t_filter_repeated() {
+        use actions::scan_path;
+        use actions::filter_repeated;
 
         let refdir = "test/ref";
         let outdir = "test/out";
