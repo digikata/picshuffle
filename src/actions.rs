@@ -9,7 +9,12 @@ use std::fs::File;
 use std::fs::create_dir_all;
 use std::io::Read;
 use std::path::{ Path, PathBuf };
+use std::fs;
 
+use chrono;
+use chrono::Local;
+use chrono::Datelike;
+use std::convert::From;
 
 pub fn hash_file(fname: &str) -> Vec<u8>
 {
@@ -64,6 +69,23 @@ pub fn scan_path(dir: &str) -> ScanData
 pub type CopyPair = (String, String);
 pub type CopyList = Vec<CopyPair>;
 
+
+/// Estimate file creation date. For now, just the year/month of file metadata
+/// later maybe look at exif data if available
+fn get_create_date(path: &str) -> chrono::Date<Local>
+{
+    let md = fs::metadata(path).expect("can't access metadata");    
+    let crtime_sys = match md.created() {
+        Ok(ct) => ct,
+        Err(_) => {
+            // try to fallback to modifiction time for systems without...
+            md.modified().expect("Can't access creation or modification time")
+        }
+    };
+    let crdate = chrono::DateTime::<Local>::from(crtime_sys).date();
+    crdate
+}
+
 /// filter out repeated files based on their hash
 /// and transform it to (src, dst) paths
 pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
@@ -84,6 +106,15 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
             // create output path
             let mut pdst = PathBuf::from(outdir);
             let psrc = PathBuf::from(p);
+
+            // add year/month
+            let crdate = get_create_date(&src);
+            let stryear = format!("{}", crdate.year());
+            pdst.push(stryear);
+            let strmonth = format!("{}", crdate.month());
+            pdst.push(strmonth);
+
+            // add filename
             pdst.push(psrc.file_name().expect("bad file name"));
             let dst = String::from(pdst.to_str().unwrap());
 
@@ -187,7 +218,6 @@ mod test {
             "test/out/foo",
         ];
 
-        
         // cleanup
         use std::fs;
         match fs::remove_dir_all(outdir) {

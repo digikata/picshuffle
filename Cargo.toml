@@ -4,6 +4,7 @@ name = "pcoalesce"
 version = "0.1.0"
 
 [dependencies]
-clap = "2.26.2"
-ignore = "0.2.2"
-rust-crypto = "0.2.36"
+chrono = "0.4.*"
+clap = "2.*"
+ignore = "0.2.*"
+rust-crypto = "0.2.*"
