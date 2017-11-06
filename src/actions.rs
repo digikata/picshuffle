@@ -66,7 +66,7 @@ pub fn scan_path(dir: &str) -> ScanData
     sd
 }
 
-pub type CopyPair = (String, String);
+pub type CopyPair = (String, String); /// src, dst
 pub type CopyList = Vec<CopyPair>;
 
 
@@ -74,7 +74,7 @@ pub type CopyList = Vec<CopyPair>;
 /// later maybe look at exif data if available
 fn get_create_date(path: &str) -> chrono::Date<Local>
 {
-    let md = fs::metadata(path).expect("can't access metadata");    
+    let md = fs::metadata(path).expect("can't access metadata");
     let crtime_sys = match md.created() {
         Ok(ct) => ct,
         Err(_) => {
@@ -199,7 +199,7 @@ mod test {
             let dst = &ent.1;
              println!("{:20} -> {}", src, dst);
         }
-    }    
+    }
 
     #[test]
     fn t_exec_copy() {
@@ -212,11 +212,31 @@ mod test {
         let cplist = filter_repeated(&sinfo, outdir);
         exec_copies(&cplist);
 
-        let expect_files = vec![
-            "test/out/1",
-            "test/out/10",
-            "test/out/foo",
-        ];
+        use std::collections::HashMap;
+
+        // Only should have these files after filter
+        let mut xp_files: HashMap<&str, bool> = [
+            ("test/ref/a/1", false),
+            ("test/ref/a/10", false),
+            //("test/ref/b/10", false),  // b10 is a dup (expected to be filtered)
+            ("test/ref/b/foo", false),
+        ].iter().cloned().collect();
+
+        for ent in cplist.iter() {
+            let src = &ent.0[..];
+
+            //println!("{} {}", ent.0, ent.1);
+
+            assert!(xp_files.contains_key(src), "Unexpected {}", src);
+
+            let val = xp_files.get_mut(src).unwrap();
+            *val = true;
+        }
+
+        for (k,v) in xp_files {
+            assert_eq!(v, true, "Missing file {}", k);
+            //println!("{} {}", k, v);
+        }
 
         // cleanup
         use std::fs;
