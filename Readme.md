@@ -1,12 +1,11 @@
 
-# pcoalese
+# picshuffle
 A utility to grab piles of photo files and organize them into a destination directory
 
 ## Features
 
 ## Todo
 
-* Consider renaming pcoalesce to something less awkward
 * Resolve identical file names w/ different hashes (by renaming the file...)
 * Quick hash
 hash first xx bytes
