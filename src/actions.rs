@@ -220,12 +220,12 @@ mod test {
         for ent in cplist.iter() {
             let src = &ent.0[..];
             let dst = &ent.1[..];
-            println!("{} {}", src, dst);
+            // println!("{} {}", src, dst);
 
-            assert!(xp_files.contains_key(src), "Unexpected {}", src);
+            assert!(xp_files.contains_key(src), "Unexpected source {}", src);
 
             let val = xp_files.get_mut(src).unwrap();
-            // assert!(val.0, dst);
+            assert_eq!(val.0, dst, "Bad destination");
             val.1 = true;
         }
 
@@ -265,4 +265,31 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn t_deconflict_file_names() {
+        use actions::*;
+
+        let refdir = "test/ref2";
+        let outdir = "test/out2";
+
+        let sinfo = scan_path(refdir);
+        let cplist = filter_repeated(&sinfo, outdir);
+        exec_copies(&cplist);
+
+        let flist = vec![
+            ("test/ref2/foo",   "test/out2/2017/11/foo"),
+            ("test/ref2/b/foo", "test/out2/2017/11/foo-1"),
+        ];
+        assert_file_iff(&flist, &cplist);
+
+        // cleanup
+        use std::fs;
+        match fs::remove_dir_all(outdir) {
+            Ok(_) => (),
+            Err(_) => {
+                assert!(false); // fail cleanup
+            }
+        }
+    }    
 }
