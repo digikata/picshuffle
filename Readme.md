@@ -2,7 +2,10 @@
 # picshuffle
 A utility to grab piles of photo files and organize them into a destination directory
 
-## Features
+## Changelog
+
+v0.1.2
+Identical output file names (with different contents) are deconflicted by automatic rename
 
 ## Todo
 
