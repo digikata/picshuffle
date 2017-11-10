@@ -6,7 +6,6 @@ A utility to grab piles of photo files and organize them into a destination dire
 
 ## Todo
 
-* Resolve identical file names w/ different hashes (by renaming the file...)
 * Quick hash
 hash first xx bytes
 * Deconflict hash collisions

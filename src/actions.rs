@@ -90,10 +90,18 @@ fn get_create_date(path: &str) -> chrono::Date<Local>
 /// and transform it to (src, dst) paths
 pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
 {
+    use std::collections::HashSet;
+    use std::collections::HashMap;
+
     let mut clist: CopyList = Vec::new();
 
-    use std::collections::HashMap;
+    
+    // track unique hash contents
     let mut hm = HashMap::new();
+
+    // track unique output names
+    let mut outpaths = HashSet::new();
+
     for ent in scandata.iter() {
         let p = &ent.0;
         let h = &ent.1;
@@ -113,12 +121,42 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
             pdst.push(stryear);
             let strmonth = format!("{}", crdate.month());
             pdst.push(strmonth);
-
-            // add filename
-            pdst.push(psrc.file_name().expect("bad file name"));
+            
+            // finish creating dst name
+            let src_fname = psrc.file_name().expect("bad file name").to_str().unwrap();
+            pdst.push(src_fname);
             let dst = String::from(pdst.to_str().unwrap());
 
-            clist.push((src, dst));
+            if !outpaths.contains(&dst) {
+                outpaths.insert(dst.clone());
+                clist.push((src, dst));
+            } else {
+                // create unique output file name
+                let mut fidx = 1;
+
+                let fname = match pdst.file_stem() {
+                    Some(_stem) => _stem.to_str().unwrap().clone(),
+                    None => "",
+                };
+                let ext = match pdst.extension() {
+                    Some(_ext) => format!(".{}", _ext.to_str().unwrap()),
+                    None => String::new(),
+                };
+
+                let mut pdst = pdst.clone();
+                pdst.pop();
+
+                loop {
+                    let newname = format!("{}-{}{}", fname, fidx, ext);
+                    if !outpaths.contains(&newname) {
+                        pdst.push(newname);
+                        let dst = String::from(pdst.to_str().unwrap());
+                        clist.push((src, dst));
+                        break;
+                    }
+                    fidx += 1;
+                }
+            }
         }
     }
     clist
@@ -225,7 +263,7 @@ mod test {
             assert!(xp_files.contains_key(src), "Unexpected source {}", src);
 
             let val = xp_files.get_mut(src).unwrap();
-            assert_eq!(val.0, dst, "Bad destination");
+            assert_eq!(val.0, dst, "Bad destination, fyi src: {}", src);
             val.1 = true;
         }
 
@@ -267,7 +305,7 @@ mod test {
     }
 
     #[test]
-    fn t_deconflict_file_names() {
+    fn t_deconflict_output() {
         use actions::*;
 
         let refdir = "test/ref2";
