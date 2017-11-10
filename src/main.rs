@@ -14,8 +14,8 @@ use actions::exec_copies;
 
 
 fn main() {
-    let app = App::new("pcoalesce")
-        .version("0.1")
+    let app = App::new("picshuffle")
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::with_name("dir")
             .value_name("SCAN_DIR")
             .help("directory to scan")
