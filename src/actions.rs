@@ -152,6 +152,9 @@ pub fn exec_copies(cplist: &CopyList) {
 #[cfg(test)]
 mod test {
 
+    #[cfg(test)]
+    use actions::CopyList;
+
     #[test]
     fn t_scan_path() {
         use actions::scan_path;
@@ -201,6 +204,39 @@ mod test {
         }
     }
 
+    /// check that only the expected files exist
+    #[cfg(test)]
+    fn assert_file_iff(exp_list: &Vec<(&str, &str)>, cplist: &CopyList)
+    {
+        use std::collections::HashMap;
+
+        // key: src path
+        // val: (dst path, bool file seen)
+        let mut xp_files: HashMap<&str, (&str, bool)> = exp_list.iter().map(
+            |src_dst| { 
+                (&src_dst.0[..], (&src_dst.1[..], false))
+            }).collect();
+
+        for ent in cplist.iter() {
+            let src = &ent.0[..];
+            let dst = &ent.1[..];
+            println!("{} {}", src, dst);
+
+            assert!(xp_files.contains_key(src), "Unexpected {}", src);
+
+            let val = xp_files.get_mut(src).unwrap();
+            // assert!(val.0, dst);
+            val.1 = true;
+        }
+
+        for (k,v) in xp_files {
+            let found = v.1;
+            assert_eq!(found, true, "List missing file {}", k);
+            //println!("{} {}", k, v);
+        }
+    }
+
+
     #[test]
     fn t_exec_copy() {
         use actions::*;
@@ -212,31 +248,13 @@ mod test {
         let cplist = filter_repeated(&sinfo, outdir);
         exec_copies(&cplist);
 
-        use std::collections::HashMap;
-
-        // Only should have these files after filter
-        let mut xp_files: HashMap<&str, bool> = [
-            ("test/ref/a/1", false),
-            ("test/ref/a/10", false),
-            //("test/ref/b/10", false),  // b10 is a dup (expected to be filtered)
-            ("test/ref/b/foo", false),
-        ].iter().cloned().collect();
-
-        for ent in cplist.iter() {
-            let src = &ent.0[..];
-
-            //println!("{} {}", ent.0, ent.1);
-
-            assert!(xp_files.contains_key(src), "Unexpected {}", src);
-
-            let val = xp_files.get_mut(src).unwrap();
-            *val = true;
-        }
-
-        for (k,v) in xp_files {
-            assert_eq!(v, true, "Missing file {}", k);
-            //println!("{} {}", k, v);
-        }
+        let flist = vec![
+            ("test/ref/a/1",  "test/out/2017/10/1"),
+            ("test/ref/a/10", "test/out/2017/10/10"),
+            // "test/ref/b/10", // b10 is a dup (expected to be filtered out)
+            ("test/ref/b/foo", "test/out/2017/10/foo"),
+        ];
+        assert_file_iff(&flist, &cplist);
 
         // cleanup
         use std::fs;
