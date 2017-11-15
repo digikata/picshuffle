@@ -14,8 +14,8 @@ use actions::scan_path;
 use actions::filter_repeated;
 use actions::exec_copies;
 
-
-fn main() {
+fn args_to_opts() -> options::Options 
+{
     let app = App::new("picshuffle")
         .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::with_name("dir")
@@ -23,35 +23,46 @@ fn main() {
             .help("directory to scan")
             .required(true)
             )
+        .arg(Arg::with_name("full_hash")
+            .help("Option to perform fingerprint over entirety of files")
+            )
         .arg(Arg::with_name("outdir")
             .value_name("OUTPUT_DIR")
             .help("output directory (dry run if not supplied)")
             )
         ;
-
-    //let opts = options::default();
-
     let amats = app.get_matches();
 
-    let dir = amats.value_of("dir").expect("missing value");
-    println!("scan {}", dir);
+    let mut opts = options::default();
 
-    let mut opt_dry_run = false;
-    let outdir = match amats.value_of("outdir") {
+    let dir = amats.value_of("dir").expect("missing value");
+    opts.in_dir = String::from(dir);
+
+    opts.out_dir = match amats.value_of("outdir") {
         Some(od) => {
             println!("  output to: {}\n", od);
             String::from(od)
         },
         None => {
             println!("  dry run, no output\n");
-            opt_dry_run = true;
+            opts.dry_run = true;
             String::new()
         }
     };
 
-    let cplist = filter_repeated(&scan_path(dir), &outdir);
+    opts
+}
 
-    if opt_dry_run {
+
+
+fn main() {
+    let opts = args_to_opts();
+
+    println!("scan {}", opts.in_dir);
+
+    let cplist = filter_repeated(&scan_path(&opts.in_dir), &opts.out_dir);
+
+    if opts.dry_run {
         for cpair in cplist.iter() {
             println!("copy {} to {}", cpair.0, cpair.1);
         }

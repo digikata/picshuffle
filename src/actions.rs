@@ -143,7 +143,8 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
                 outpaths.insert(dst.clone());
                 clist.push((src, dst));
             } else {
-                // create unique output file name
+                // different contents with same name
+                // so, create a unique output file name
                 let mut fidx = 1;
 
                 let fname = match pdst.file_stem() {
