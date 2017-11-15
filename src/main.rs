@@ -7,6 +7,8 @@ extern crate ignore;
 
 use clap::{ App, Arg };
 
+
+mod options;
 mod actions;
 use actions::scan_path;
 use actions::filter_repeated;
@@ -27,13 +29,15 @@ fn main() {
             )
         ;
 
-    let opts = app.get_matches();
+    //let opts = options::default();
 
-    let dir = opts.value_of("dir").expect("missing value");
+    let amats = app.get_matches();
+
+    let dir = amats.value_of("dir").expect("missing value");
     println!("scan {}", dir);
 
     let mut opt_dry_run = false;
-    let outdir = match opts.value_of("outdir") {
+    let outdir = match amats.value_of("outdir") {
         Some(od) => {
             println!("  output to: {}\n", od);
             String::from(od)
