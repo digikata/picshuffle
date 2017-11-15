@@ -16,17 +16,27 @@ use chrono::Local;
 use chrono::Datelike;
 use std::convert::From;
 
-pub fn hash_file(fname: &str) -> Vec<u8>
+use options;
+use options::Options;
+
+pub fn hash_file(opts: &Options, fname: &str) -> Vec<u8>
 {
     let mut h = Sha256::new();
 
-
-    let mut buf = [0u8; 4096];
+    const HASHBUFSZ: usize = 4096 * 16; 
 
     let mut f = File::open(fname).expect("open file");
-    while let Ok(nbytes) = f.read(&mut buf) {
-        if nbytes == 0 { break; }
-        h.input(&buf[0..nbytes]);
+    
+    let mut buf = [0u8; HASHBUFSZ];
+    if opts.fast_hash {
+        if let Ok(nbytes) = f.read(&mut buf) {
+            h.input(&buf[0..nbytes]);
+        }
+    } else {
+        while let Ok(nbytes) = f.read(&mut buf) {
+            if nbytes == 0 { break; }
+            h.input(&buf[0..nbytes]);
+        }
     }
 
     let mut out = vec![0; h.output_bytes()];
@@ -43,6 +53,8 @@ pub type ScanData = Vec<(String, Vec<u8>)>;
 
 pub fn scan_path(dir: &str) -> ScanData
 {
+    let opts = options::default();
+
     let walk = WalkBuilder::new(dir);
 
     let mut vdat: Vec<String> = Vec::new();
@@ -61,7 +73,7 @@ pub fn scan_path(dir: &str) -> ScanData
     
     let mut sd: ScanData = Vec::new();
     for p in vdat.iter() {
-        sd.push((p.clone(), hash_file(p)));
+        sd.push((p.clone(), hash_file(&opts, p)));
     }
     sd
 }
