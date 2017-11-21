@@ -51,9 +51,9 @@ pub fn hash_file(opts: &Options, fname: &str) -> Vec<u8>
 
 pub type ScanData = Vec<(String, Vec<u8>)>;
 
-pub fn scan_path(dir: &str) -> ScanData
+pub fn scan_path(opts: &Options) -> ScanData
 {
-    let opts = options::default();
+    let dir = &opts.in_dir;
 
     let walk = WalkBuilder::new(dir);
 
@@ -100,10 +100,12 @@ fn get_create_date(path: &str) -> chrono::Date<Local>
 
 /// filter out repeated files based on their hash
 /// and transform it to (src, dst) paths
-pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
+pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 {
     use std::collections::HashSet;
     use std::collections::HashMap;
+
+    let outdir = &opts.out_dir;
 
     let mut clist: CopyList = Vec::new();
 
@@ -117,11 +119,14 @@ pub fn filter_repeated(scandata: &ScanData, outdir: &str) -> CopyList
     for ent in scandata.iter() {
         let p = &ent.0;
         let h = &ent.1;
+
+        let src = (*p).clone();
+
         if hm.contains_key(h) {
             continue;
+            
         } else {
             hm.insert(h, p);
-            let src = (*p).clone();
 
             // create output path
             let mut pdst = PathBuf::from(outdir);
@@ -209,9 +214,12 @@ mod test {
     #[test]
     fn t_scan_path() {
         use actions::scan_path;
+        use options;
 
-        let refdir = "test/ref";
-        let sinfo = scan_path(refdir);
+        let mut opts =options::default();
+        opts.in_dir = String::from("test/ref");
+
+        let sinfo = scan_path(&opts);
         // for ent in sinfo.iter() {
         //     let p = &ent.0;
         //     let h = &ent.1;
@@ -236,18 +244,20 @@ mod test {
     fn t_filter_repeated() {
         use actions::scan_path;
         use actions::filter_repeated;
+        use options;
 
-        let refdir = "test/ref";
-        let outdir = "test/out";
+        let mut opts =options::default();
+        opts.in_dir = String::from("test/ref");
+        opts.out_dir = String::from("test/out");
 
-        let sinfo = scan_path(refdir);
+        let sinfo = scan_path(&opts);
         // for ent in sinfo.iter() {
         //     let p = &ent.0;
         //     let h = &ent.1;
         //     println!("{:?} {:?}", p, h);
         // }
 
-        let filt = filter_repeated(&sinfo, outdir);
+        let filt = filter_repeated(&opts, &sinfo);
         for ent in filt.iter() {
             let src = &ent.0;
             let dst = &ent.1;
@@ -273,7 +283,7 @@ mod test {
             let dst = &ent.1[..];
             // println!("{} {}", src, dst);
 
-            assert!(xp_files.contains_key(src), "Unexpected source {}", src);
+            assert!(xp_files.contains_key(src), "Missing source {}", src);
 
             let val = xp_files.get_mut(src).unwrap();
             assert_eq!(val.0, dst, "Bad destination, fyi src: {}", src);
@@ -292,11 +302,12 @@ mod test {
     fn t_exec_copy() {
         use actions::*;
 
-        let refdir = "test/ref";
-        let outdir = "test/out";
+        let mut opts =options::default();
+        opts.in_dir = String::from("test/ref");
+        opts.out_dir = String::from("test/out");
 
-        let sinfo = scan_path(refdir);
-        let cplist = filter_repeated(&sinfo, outdir);
+        let sinfo = scan_path(&opts);
+        let cplist = filter_repeated(&opts, &sinfo);
         exec_copies(&cplist);
 
         let flist = vec![
@@ -309,7 +320,7 @@ mod test {
 
         // cleanup
         use std::fs;
-        match fs::remove_dir_all(outdir) {
+        match fs::remove_dir_all(opts.out_dir) {
             Ok(_) => (),
             Err(_) => {
                 assert!(false); // fail cleanup
@@ -321,11 +332,13 @@ mod test {
     fn t_deconflict_output() {
         use actions::*;
 
-        let refdir = "test/ref2";
-        let outdir = "test/out2";
+        let mut opts =options::default();
+        opts.in_dir = String::from("test/ref2");
+        opts.out_dir = String::from("test/out2");
 
-        let sinfo = scan_path(refdir);
-        let cplist = filter_repeated(&sinfo, outdir);
+        let sinfo = scan_path(&opts);
+        let cplist = filter_repeated(&opts, &sinfo);
+
         exec_copies(&cplist);
 
         let flist = vec![
@@ -336,7 +349,7 @@ mod test {
 
         // cleanup
         use std::fs;
-        match fs::remove_dir_all(outdir) {
+        match fs::remove_dir_all(opts.out_dir) {
             Ok(_) => (),
             Err(_) => {
                 assert!(false); // fail cleanup

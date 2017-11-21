@@ -9,7 +9,7 @@ further split up by year/month subdirectories.
 ## Changelog
 
 v0.1.3
-Added a fash hash option to only hash the first n bytes of each file
+Added a fast hash option to only hash the first n bytes of each file
 
 v0.1.2
 Identical output file names (with different contents) are deconflicted by automatic rename
