@@ -60,7 +60,7 @@ fn main() {
 
     println!("scan {}", opts.in_dir);
 
-    let cplist = filter_repeated(&scan_path(&opts.in_dir), &opts.out_dir);
+    let cplist = filter_repeated(&opts, &scan_path(&opts));
 
     if opts.dry_run {
         for cpair in cplist.iter() {
