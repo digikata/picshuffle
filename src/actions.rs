@@ -16,10 +16,10 @@ use chrono::Local;
 use chrono::Datelike;
 use std::convert::From;
 
-use options;
 use options::Options;
 
-pub fn hash_file(opts: &Options, fname: &str) -> Vec<u8>
+
+pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
 {
     let mut h = Sha256::new();
 
@@ -28,10 +28,11 @@ pub fn hash_file(opts: &Options, fname: &str) -> Vec<u8>
     let mut f = File::open(fname).expect("open file");
     
     let mut buf = [0u8; HASHBUFSZ];
-    if opts.fast_hash {
+    if fast_hash {
         if let Ok(nbytes) = f.read(&mut buf) {
             h.input(&buf[0..nbytes]);
         }
+
     } else {
         while let Ok(nbytes) = f.read(&mut buf) {
             if nbytes == 0 { break; }
@@ -73,7 +74,7 @@ pub fn scan_path(opts: &Options) -> ScanData
     
     let mut sd: ScanData = Vec::new();
     for p in vdat.iter() {
-        sd.push((p.clone(), hash_file(&opts, p)));
+        sd.push((p.clone(), hash_file(p, opts.fast_hash)));
     }
     sd
 }
@@ -98,11 +99,74 @@ fn get_create_date(path: &str) -> chrono::Date<Local>
     crdate
 }
 
+use std::collections::HashSet;
+
+fn checked_add_to_copylist(clist: &mut CopyList, outpaths: &mut HashSet<String>, src: String, pdst: &PathBuf)
+{
+    let dst = String::from(pdst.to_str().unwrap());
+
+    if outpaths.contains(&dst) {
+        // different contents with same name
+        // so, create a unique output file name
+        let mut fidx = 1;
+
+        let fname = match pdst.file_stem() {
+            Some(_stem) => _stem.to_str().unwrap().clone(),
+            None => "",
+        };
+        let ext = match pdst.extension() {
+            Some(_ext) => format!(".{}", _ext.to_str().unwrap()),
+            None => String::new(),
+        };
+
+        let mut pdst = pdst.clone();
+        pdst.pop();
+
+        loop {
+            let newname = format!("{}-{}{}", fname, fidx, ext);
+            if !outpaths.contains(&newname) {
+                pdst.push(newname);
+                let dst = String::from(pdst.to_str().unwrap());
+                clist.push((src, dst));
+                break;
+            }
+            fidx += 1;
+        }
+    } else {
+        // new file add to unique outpath and copy list
+        outpaths.insert(dst.clone());
+        clist.push((src, dst));
+    }    
+}
+
+
+/// create output file path:
+/// outdir/YYYY/MM/srcfilename
+fn make_outpath(outdir: &str, srcpath: &str) -> PathBuf
+{
+    // create output path
+    let mut pdst = PathBuf::from(outdir);
+    let pbsrc = PathBuf::from(srcpath);
+
+    // add year/month
+    let crdate = get_create_date(&srcpath);
+    let stryear = format!("{}", crdate.year());
+    pdst.push(stryear);
+    let strmonth = format!("{}", crdate.month());
+    pdst.push(strmonth);
+    
+    // finish creating dst name
+    let src_fname = pbsrc.file_name().expect("bad file name").to_str().unwrap();
+    pdst.push(src_fname);
+
+    pdst
+}
+
+
 /// filter out repeated files based on their hash
-/// and transform it to (src, dst) paths
+/// and transform it to (src, dst) copy commands
 pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 {
-    use std::collections::HashSet;
     use std::collections::HashMap;
 
     let outdir = &opts.out_dir;
@@ -111,76 +175,47 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 
     
     // track unique hash contents
-    let mut hm = HashMap::new();
+    let mut hm = HashMap::<Vec<u8>, &str>::new();
 
     // track unique output names
     let mut outpaths = HashSet::new();
 
     for ent in scandata.iter() {
-        let p = &ent.0;
-        let h = &ent.1;
+        let p = &ent.0; // source path
+        let h = &ent.1; // hash of source
 
         let src = (*p).clone();
 
         if hm.contains_key(h) {
-            continue;
-            
-        } else {
-            hm.insert(h, p);
+            // hash collision - check full hash of new file and existing file...
 
-            // create output path
-            let mut pdst = PathBuf::from(outdir);
-            let psrc = PathBuf::from(p);
-
-            // add year/month
-            let crdate = get_create_date(&src);
-            let stryear = format!("{}", crdate.year());
-            pdst.push(stryear);
-            let strmonth = format!("{}", crdate.month());
-            pdst.push(strmonth);
-            
-            // finish creating dst name
-            let src_fname = psrc.file_name().expect("bad file name").to_str().unwrap();
-            pdst.push(src_fname);
-            let dst = String::from(pdst.to_str().unwrap());
-
-            if !outpaths.contains(&dst) {
-                outpaths.insert(dst.clone());
-                clist.push((src, dst));
-            } else {
-                // different contents with same name
-                // so, create a unique output file name
-                let mut fidx = 1;
-
-                let fname = match pdst.file_stem() {
-                    Some(_stem) => _stem.to_str().unwrap().clone(),
-                    None => "",
-                };
-                let ext = match pdst.extension() {
-                    Some(_ext) => format!(".{}", _ext.to_str().unwrap()),
-                    None => String::new(),
-                };
-
-                let mut pdst = pdst.clone();
-                pdst.pop();
-
-                loop {
-                    let newname = format!("{}-{}{}", fname, fidx, ext);
-                    if !outpaths.contains(&newname) {
-                        pdst.push(newname);
-                        let dst = String::from(pdst.to_str().unwrap());
-                        clist.push((src, dst));
-                        break;
-                    }
-                    fidx += 1;
-                }
+            if !opts.fast_hash { 
+                // no point doing more comparison the files were full hashes already
+                continue;
             }
+            let existing_src = hm.get(h).unwrap();
+            let full_hash_old = hash_file(existing_src, false);
+            let full_hash_new = hash_file(&src, false);
+            
+            if full_hash_new == full_hash_old {
+                continue;
+            }
+                
+            // the files are different after all, add to copy list
+            let pdst = make_outpath(outdir, p);
+            checked_add_to_copylist(&mut clist, &mut outpaths, src, &pdst);
+        } else {
+            hm.insert(h.clone(), p);
+
+            let pdst = make_outpath(outdir, p);
+            checked_add_to_copylist(&mut clist, &mut outpaths, src, &pdst);
         }
     }
     clist
 }
 
 
+/// execute a list of copy commands
 pub fn exec_copies(cplist: &CopyList) {
     use std::fs::copy;
 
@@ -189,7 +224,7 @@ pub fn exec_copies(cplist: &CopyList) {
 
         let dst = ppair.1;
         if !dst.exists() {
-            let parent_dir = dst.parent().expect("couldn't find parent");
+            let parent_dir = dst.parent().expect("couldn't find parent out dir");
             if !parent_dir.exists() {
                 if let Err(edir) = create_dir_all(parent_dir) {
                     println!("error creating {:?}", edir);
@@ -301,8 +336,9 @@ mod test {
     #[test]
     fn t_exec_copy() {
         use actions::*;
+        use options;
 
-        let mut opts =options::default();
+        let mut opts = options::default();
         opts.in_dir = String::from("test/ref");
         opts.out_dir = String::from("test/out");
 
@@ -329,10 +365,11 @@ mod test {
     }
 
     #[test]
-    fn t_deconflict_output() {
+    fn t_deconflict_output_fname() {
         use actions::*;
+        use options;
 
-        let mut opts =options::default();
+        let mut opts = options::default();
         opts.in_dir = String::from("test/ref2");
         opts.out_dir = String::from("test/out2");
 
