@@ -18,8 +18,6 @@ Identical output file names (with different contents) are deconflicted by automa
 ## Todo
 * Generate dry run output which could be saved as a shell script as an alternate way of
   execution
-* Deconflict hash collisions
-compare full files on hash collisions? (should be very infrequent anyway)
 * Use EXIF file creation dates when available
 * Play with parallelizing the scan
 At least the hash, file pairs..
