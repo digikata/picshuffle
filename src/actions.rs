@@ -5,6 +5,9 @@ use ignore::WalkBuilder;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 
+use exif;
+
+use std;
 use std::fs::File;
 use std::fs::create_dir_all;
 use std::io::Read;
@@ -14,6 +17,7 @@ use std::fs;
 use chrono;
 use chrono::Local;
 use chrono::Datelike;
+use chrono::TimeZone;
 use std::convert::From;
 
 use options::Options;
@@ -85,7 +89,7 @@ pub type CopyList = Vec<CopyPair>;
 
 /// Estimate file creation date. For now, just the year/month of file metadata
 /// later maybe look at exif data if available
-fn get_create_date(path: &str) -> chrono::Date<Local>
+fn get_fs_create_date(path: &str) -> chrono::Date<Local>
 {
     let md = fs::metadata(path).expect("can't access metadata");
     let crtime_sys = match md.created() {
@@ -98,6 +102,50 @@ fn get_create_date(path: &str) -> chrono::Date<Local>
     let crdate = chrono::DateTime::<Local>::from(crtime_sys).date();
     crdate
 }
+
+fn conv_field_datetime(fld: &exif::Field) -> Option<exif::DateTime>
+{
+    let val_asc = match fld.value {
+        exif::Value::Ascii(ref asc) => asc,
+        _ => return None
+    };
+    let dt = match exif::DateTime::from_ascii(&val_asc[..][0]) {
+        Ok(dt) => dt,
+        _ => return None,
+    };
+    Some(dt)
+}
+
+/// Estimate create date from exif data, None is retuned if the file is not an
+/// exif
+fn get_exif_create_date(path: &str) -> Option<chrono::Date<Local>>
+{
+    let file = fs::File::open(path).expect(&format!("Couldn't open {}", path));
+    let reader = match exif::Reader::new(&mut std::io::BufReader::new(&file)) {
+        Ok(reader) => reader,
+        Err(err) => {
+            println!("{:?}", err);
+            return None;
+        }
+    };
+    for f in reader.fields() {
+        match f.tag {
+            exif::Tag::DateTime => {
+                if let Some(dt) = conv_field_datetime(&f) {
+                    // println!("DateTime: {}", dt);
+                    // println!("YYYY/MM: {}/{}", dt.year, dt.month);
+                    let year  = i32::from(dt.year);
+                    let month = u32::from(dt.month);
+                    let day   = u32::from(dt.day);
+                    return Some(Local.ymd(year, month, day));
+                }
+            },
+            _ => {},
+        }
+    }    
+    None
+}
+
 
 use std::collections::HashSet;
 
@@ -149,7 +197,11 @@ fn make_outpath(outdir: &str, srcpath: &str) -> PathBuf
     let pbsrc = PathBuf::from(srcpath);
 
     // add year/month
-    let crdate = get_create_date(&srcpath);
+    let crdate = match get_exif_create_date(&srcpath) {
+        Some(val) => val,
+        None      => get_fs_create_date(&srcpath), // fallback to filesys date
+    };
+
     let stryear = format!("{}", crdate.year());
     pdst.push(stryear);
     let strmonth = format!("{}", crdate.month());

@@ -16,9 +16,9 @@ Identical output file names (with different contents) are deconflicted by automa
 
 
 ## Todo
+* Use EXIF file creation dates when available
 * Generate dry run output which could be saved as a shell script as an alternate way of
   execution
-* Use EXIF file creation dates when available
 * Play with parallelizing the scan
 At least the hash, file pairs..
 * add exclude syntax for scan
