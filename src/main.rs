@@ -4,6 +4,7 @@ extern crate chrono;
 extern crate clap;
 extern crate crypto;
 extern crate ignore;
+extern crate exif;
 
 use clap::{ App, Arg };
 
