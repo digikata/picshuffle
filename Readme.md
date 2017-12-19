@@ -7,6 +7,8 @@ further split up by year/month subdirectories.
 
 
 ## Changelog
+v0.1.4
+Added exif creation date scan when available
 
 v0.1.3
 Added a fast hash option to only hash the first n bytes of each file
@@ -16,7 +18,6 @@ Identical output file names (with different contents) are deconflicted by automa
 
 
 ## Todo
-* Use EXIF file creation dates when available
 * Generate dry run output which could be saved as a shell script as an alternate way of
   execution
 * Play with parallelizing the scan
