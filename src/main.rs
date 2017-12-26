@@ -44,7 +44,7 @@ fn args_to_opts() -> options::Options
     let dir = amats.value_of("dir").expect("missing value");
     opts.in_dir = String::from(dir);
 
-    match amats.value_of("use_exif") {
+    match amats.value_of("ignore_exif") {
         Some(_) => opts.ignore_exif = true,
         None => opts.ignore_exif = false,
     };
