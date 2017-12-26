@@ -30,7 +30,7 @@ pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
     const HASHBUFSZ: usize = 4096 * 16; 
 
     let mut f = File::open(fname).expect("open file");
-    
+
     let mut buf = [0u8; HASHBUFSZ];
     if fast_hash {
         if let Ok(nbytes) = f.read(&mut buf) {
@@ -75,7 +75,7 @@ pub fn scan_path(opts: &Options) -> ScanData
             }
         }
     }
-    
+
     let mut sd: ScanData = Vec::new();
     for p in vdat.iter() {
         sd.push((p.clone(), hash_file(p, opts.fast_hash)));
@@ -190,23 +190,27 @@ fn checked_add_to_copylist(clist: &mut CopyList, outpaths: &mut HashSet<String>,
 
 /// create output file path:
 /// outdir/YYYY/MM/srcfilename
-fn make_outpath(outdir: &str, srcpath: &str) -> PathBuf
+fn make_outpath(opts: &Options, outdir: &str, srcpath: &str) -> PathBuf
 {
     // create output path
     let mut pdst = PathBuf::from(outdir);
     let pbsrc = PathBuf::from(srcpath);
 
     // add year/month
-    let crdate = match get_exif_create_date(&srcpath) {
-        Some(val) => val,
-        None      => get_fs_create_date(&srcpath), // fallback to filesys date
+    let crdate = if opts.use_exif {
+        match get_exif_create_date(&srcpath) {
+            Some(val) => val,
+            None      => get_fs_create_date(&srcpath), // fallback to filesys date
+        }
+    } else {
+        get_fs_create_date(&srcpath)
     };
 
     let stryear = format!("{}", crdate.year());
     pdst.push(stryear);
     let strmonth = format!("{}", crdate.month());
     pdst.push(strmonth);
-    
+
     // finish creating dst name
     let src_fname = pbsrc.file_name().expect("bad file name").to_str().unwrap();
     pdst.push(src_fname);
@@ -241,25 +245,25 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
         if hm.contains_key(h) {
             // hash collision - check full hash of new file and existing file...
 
-            if !opts.fast_hash { 
+            if !opts.fast_hash {
                 // no point doing more comparison the files were full hashes already
                 continue;
             }
             let existing_src = hm.get(h).unwrap();
             let full_hash_old = hash_file(existing_src, false);
             let full_hash_new = hash_file(&src, false);
-            
+
             if full_hash_new == full_hash_old {
                 continue;
             }
-                
+
             // the files are different after all, add to copy list
-            let pdst = make_outpath(outdir, p);
+            let pdst = make_outpath(opts, outdir, p);
             checked_add_to_copylist(&mut clist, &mut outpaths, src, &pdst);
         } else {
             hm.insert(h.clone(), p);
 
-            let pdst = make_outpath(outdir, p);
+            let pdst = make_outpath(opts, outdir, p);
             checked_add_to_copylist(&mut clist, &mut outpaths, src, &pdst);
         }
     }
