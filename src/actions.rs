@@ -128,6 +128,8 @@ fn get_exif_create_date(path: &str) -> Option<chrono::Date<Local>>
             return None;
         }
     };
+
+    let mut ret: Option<chrono::Date<Local>> = None;
     for f in reader.fields() {
         match f.tag {
             exif::Tag::DateTime => {
@@ -137,13 +139,38 @@ fn get_exif_create_date(path: &str) -> Option<chrono::Date<Local>>
                     let year  = i32::from(dt.year);
                     let month = u32::from(dt.month);
                     let day   = u32::from(dt.day);
-                    return Some(Local.ymd(year, month, day));
+                    let date = Local.ymd(year, month, day);
+                    if let Some(olddate) = ret {
+                        if date < olddate {
+                            ret = Some(date);
+                        }
+                    } else {
+                        ret = Some(date);
+                    }
+                }
+            },
+
+            exif::Tag::DateTimeOriginal => {
+                if let Some(dt) = conv_field_datetime(&f) {
+                    // println!("DateTime: {}", dt);
+                    // println!("YYYY/MM: {}/{}", dt.year, dt.month);
+                    let year  = i32::from(dt.year);
+                    let month = u32::from(dt.month);
+                    let day   = u32::from(dt.day);
+                    let date = Local.ymd(year, month, day);
+                    if let Some(olddate) = ret {
+                        if date < olddate {
+                            ret = Some(date);
+                        }
+                    } else {
+                        ret = Some(date);
+                    }
                 }
             },
             _ => {},
         }
-    }    
-    None
+    }
+    ret
 }
 
 
@@ -197,13 +224,13 @@ fn make_outpath(opts: &Options, outdir: &str, srcpath: &str) -> PathBuf
     let pbsrc = PathBuf::from(srcpath);
 
     // add year/month
-    let crdate = if opts.use_exif {
+    let crdate = if opts.ignore_exif {
+        get_fs_create_date(&srcpath)
+    } else {
         match get_exif_create_date(&srcpath) {
             Some(val) => val,
             None      => get_fs_create_date(&srcpath), // fallback to filesys date
         }
-    } else {
-        get_fs_create_date(&srcpath)
     };
 
     let stryear = format!("{}", crdate.year());
@@ -377,7 +404,7 @@ mod test {
             assert!(xp_files.contains_key(src), "Missing source {}", src);
 
             let val = xp_files.get_mut(src).unwrap();
-            assert_eq!(val.0, dst, "Bad destination, fyi src: {}", src);
+            assert_eq!(val.0, dst, "Dest file mismatch...\n   src: {}", src);
             val.1 = true;
         }
 
@@ -458,5 +485,39 @@ mod test {
                 assert!(false); // fail cleanup
             }
         }
-    }    
+    }
+
+    #[test]
+    fn t_exif() {
+        use actions::*;
+        use options;
+
+        let mut opts = options::default();
+        opts.ignore_exif = false;
+        opts.in_dir = String::from("test/ref3");
+        opts.out_dir = String::from("test/out3");
+
+        let sinfo = scan_path(&opts);
+        let cplist = filter_repeated(&opts, &sinfo);
+        exec_copies(&cplist);
+
+        // assume the ref creation yyyy/mmm date will be the test file date
+        let year = 2011;
+        let mon  = 11;
+
+        let flist = vec![
+            ("test/ref3/8096135463_c7384a72c6_o.jpg",
+                format!("test/out3/{}/{}/8096135463_c7384a72c6_o.jpg", year, mon)),
+        ];
+        assert_file_iff(&flist, &cplist);
+
+        // cleanup
+        use std::fs;
+        match fs::remove_dir_all(opts.out_dir) {
+            Ok(_) => (),
+            Err(_) => {
+                assert!(false); // fail cleanup
+            }
+        }
+    }
 }
