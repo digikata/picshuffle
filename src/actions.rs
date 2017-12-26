@@ -358,7 +358,7 @@ mod test {
 
     /// check that only the expected files exist
     #[cfg(test)]
-    fn assert_file_iff(exp_list: &Vec<(&str, &str)>, cplist: &CopyList)
+    fn assert_file_iff(exp_list: &Vec<(&str, String)>, cplist: &CopyList)
     {
         use std::collections::HashMap;
 
@@ -393,6 +393,7 @@ mod test {
     fn t_exec_copy() {
         use actions::*;
         use options;
+        use std::fs;
 
         let mut opts = options::default();
         opts.in_dir = String::from("test/ref");
@@ -402,16 +403,20 @@ mod test {
         let cplist = filter_repeated(&opts, &sinfo);
         exec_copies(&cplist);
 
+        // assume the ref creation yyyy/mmm date will be the test file date
+        let created = get_fs_create_date("test/ref");
+        let year = created.year();
+        let mon  = created.month();
+
         let flist = vec![
-            ("test/ref/a/1",  "test/out/2017/10/1"),
-            ("test/ref/a/10", "test/out/2017/10/10"),
+            ("test/ref/a/1",   format!("test/out/{}/{}/1",  year, mon)),
+            ("test/ref/a/10",  format!("test/out/{}/{}/10", year, mon)),
             // "test/ref/b/10", // b10 is a dup (expected to be filtered out)
-            ("test/ref/b/foo", "test/out/2017/10/foo"),
+            ("test/ref/b/foo", format!("test/out/{}/{}/foo", year, mon)),
         ];
         assert_file_iff(&flist, &cplist);
 
         // cleanup
-        use std::fs;
         match fs::remove_dir_all(opts.out_dir) {
             Ok(_) => (),
             Err(_) => {
@@ -434,9 +439,14 @@ mod test {
 
         exec_copies(&cplist);
 
+        // assume the ref creation yyyy/mmm date will be the test file date
+        let created = get_fs_create_date("test/ref2");
+        let year = created.year();
+        let mon  = created.month();
+
         let flist = vec![
-            ("test/ref2/foo",   "test/out2/2017/11/foo"),
-            ("test/ref2/b/foo", "test/out2/2017/11/foo-1"),
+            ("test/ref2/foo",   format!("test/out2/{}/{}/foo-1", year, mon)),
+            ("test/ref2/b/foo", format!("test/out2/{}/{}/foo", year, mon)),
         ];
         assert_file_iff(&flist, &cplist);
 
