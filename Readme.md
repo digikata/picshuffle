@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/digikata/picshuffle.svg?branch=master)](https://travis-ci.org/digikata/picshuffle)
 
 # picshuffle
 A utility to grab piles of photo files and organize them into a destination directory
