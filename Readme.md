@@ -8,7 +8,9 @@ further split up by year/month subdirectories.
 
 ## Changelog
 v0.1.4
-Added exif creation date scan when available
+Added exif creation date scan when available. The code used for exif reading seems to
+come up with slightly different dates in my verification checks so there's still
+some work here. The option is default off for now.
 
 v0.1.3
 Added a fast hash default to only hash the first n bytes of each file

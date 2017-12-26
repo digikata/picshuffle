@@ -24,6 +24,10 @@ fn args_to_opts() -> options::Options
             .help("directory to scan")
             .required(true)
             )
+        .arg(Arg::with_name("use_exif")
+            .short("e")
+            .help("Option to extract exif dates from files")
+            )
         .arg(Arg::with_name("full_hash")
             .short("f")
             .help("Option to perform fingerprint over full files")
@@ -39,6 +43,11 @@ fn args_to_opts() -> options::Options
 
     let dir = amats.value_of("dir").expect("missing value");
     opts.in_dir = String::from(dir);
+
+    match amats.value_of("use_exif") {
+        Some(_) => opts.use_exif = true,
+        None => opts.use_exif = false,
+    };
 
     opts.out_dir = match amats.value_of("outdir") {
         Some(od) => {
