@@ -18,7 +18,7 @@ use actions::scan_path;
 use actions::filter_repeated;
 use actions::exec_copies;
 use actions::script_copies_unix;
-
+use actions::generic_dry_run;
 
 
 /// picshuffle is a utility to grab piles of photo files and organize them into a
@@ -26,14 +26,15 @@ use actions::script_copies_unix;
 fn main() {
     let opts = options::args_to_opts();
 
-    println!("scan {}", opts.in_dir);
+    eprintln!("scan {}", opts.in_dir);
 
-    let cplist = filter_repeated(&opts, &scan_path(&opts));
+    let scandat = scan_path(&opts);
+    let cplist  = filter_repeated(&opts, &scandat);
 
-    if opts.dry_run {
-        for cpair in cplist.iter() {
-            println!("copy {} to {}", cpair.0, cpair.1);
-        }
+    if opts.out_script {
+        script_copies_unix(&cplist);
+    } else if opts.dry_run {
+        generic_dry_run(&cplist);
     } else {
         exec_copies(&cplist);
     }

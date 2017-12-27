@@ -127,7 +127,7 @@ fn get_exif_create_date(path: &str) -> Option<chrono::Date<Local>>
     let reader = match exif::Reader::new(&mut std::io::BufReader::new(&file)) {
         Ok(reader) => reader,
         Err(err) => {
-            println!("{:?}", err);
+            eprintln!("{:?}", err);
             return None;
         }
     };
@@ -214,7 +214,7 @@ fn checked_add_to_copylist(clist: &mut CopyList, outpaths: &mut HashSet<String>,
         // new file add to unique outpath and copy list
         outpaths.insert(dst.clone());
         clist.push((src, dst));
-    }    
+    }
 }
 
 
@@ -301,7 +301,8 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 
 
 /// execute a list of copy commands
-pub fn exec_copies(cplist: &CopyList) {
+pub fn exec_copies(cplist: &CopyList)
+{
     use std::fs::copy;
 
     for cpair in cplist.iter() {
@@ -312,27 +313,63 @@ pub fn exec_copies(cplist: &CopyList) {
             let parent_dir = dst.parent().expect("couldn't find parent out dir");
             if !parent_dir.exists() {
                 if let Err(edir) = create_dir_all(parent_dir) {
-                    println!("error creating {:?}", edir);
+                    eprintln!("error creating {:?}", edir);
                     return;
                 }
             }
         }
 
         if let Err(e) = copy(ppair.0, ppair.1) {
-            println!("err {:?}", e);
+            eprintln!("err {:?}", e);
         }
+    }
+}
+
+/// generate a script of copy commands for unix systems
+pub fn script_copies_unix(cplist: &CopyList)
+{
+    // track directories to create
+    let mut create_dirs: HashSet<&str> = HashSet::new();
+    for cpair in cplist.iter() {
+        let ppair = (Path::new(&cpair.0), Path::new(&cpair.1));
+
+        let dst = ppair.1;
+        if !dst.exists() {
+            let parent_dir = dst.parent().expect("couldn't find parent out dir");
+            let parent_str = parent_dir.to_str().unwrap();
+            if !parent_dir.exists() && !create_dirs.contains(parent_str) {
+                create_dirs.insert(parent_str);
+            }
+        }
+    }
+
+    // generate script lines
+    for dir in create_dirs.iter() {
+        println!("mkdir -p '{}'", dir);
+    }
+    for cpair in cplist.iter() {
+        println!("cp '{}' '{}'", cpair.0, cpair.1);
+    }
+}
+
+
+pub fn generic_dry_run(cplist: &CopyList)
+{
+    for cpair in cplist.iter() {
+        println!("copy {} to {}", cpair.0, cpair.1);
     }
 }
 
 
 #[cfg(test)]
-mod test {
-
+mod test
+{
     #[cfg(test)]
     use actions::CopyList;
 
     #[test]
-    fn t_scan_path() {
+    fn t_scan_path()
+    {
         use actions::scan_path;
         use options;
 
@@ -361,7 +398,8 @@ mod test {
     }
 
     #[test]
-    fn t_filter_repeated() {
+    fn t_filter_repeated()
+    {
         use actions::scan_path;
         use actions::filter_repeated;
         use options;
@@ -425,6 +463,7 @@ mod test {
         use std::fs;
 
         let mut opts = options::default();
+        opts.ignore_exif = true;
         opts.in_dir = String::from("test/ref");
         opts.out_dir = String::from("test/out");
 
@@ -455,7 +494,8 @@ mod test {
     }
 
     #[test]
-    fn t_deconflict_output_fname() {
+    fn t_deconflict_output_fname()
+    {
         use actions::*;
         use options;
 
@@ -490,7 +530,8 @@ mod test {
     }
 
     #[test]
-    fn t_exif() {
+    fn t_exif()
+    {
         use actions::*;
         use options;
 
