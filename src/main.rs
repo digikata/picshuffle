@@ -1,4 +1,7 @@
-
+/*
+ * Copyright (c) 2017, Alan Chen
+ * See LICENCE file for BSD-2 terms
+ */
 
 extern crate chrono;
 extern crate clap;
@@ -6,7 +9,7 @@ extern crate crypto;
 extern crate ignore;
 extern crate exif;
 
-use clap::{ App, Arg };
+
 
 
 mod options;
@@ -14,60 +17,14 @@ mod actions;
 use actions::scan_path;
 use actions::filter_repeated;
 use actions::exec_copies;
-
-fn args_to_opts() -> options::Options 
-{
-    let app = App::new("picshuffle")
-        .version(env!("CARGO_PKG_VERSION"))
-        .arg(Arg::with_name("dir")
-            .value_name("SCAN_DIR")
-            .help("directory to scan")
-            .required(true)
-            )
-        .arg(Arg::with_name("ignore_exif")
-            .short("e")
-            .help("Option to ignore exif dates from files")
-            )
-        .arg(Arg::with_name("full_hash")
-            .short("f")
-            .help("Option to perform fingerprint over full files")
-            )
-        .arg(Arg::with_name("outdir")
-            .value_name("OUTPUT_DIR")
-            .help("output directory (dry run if not supplied)")
-            )
-        ;
-    let amats = app.get_matches();
-
-    let mut opts = options::default();
-
-    let dir = amats.value_of("dir").expect("missing value");
-    opts.in_dir = String::from(dir);
-
-    match amats.value_of("ignore_exif") {
-        Some(_) => opts.ignore_exif = true,
-        None => opts.ignore_exif = false,
-    };
-
-    opts.out_dir = match amats.value_of("outdir") {
-        Some(od) => {
-            println!("  output to: {}\n", od);
-            String::from(od)
-        },
-        None => {
-            println!("  dry run, no output\n");
-            opts.dry_run = true;
-            String::new()
-        }
-    };
-
-    opts
-}
+use actions::script_copies_unix;
 
 
 
+/// picshuffle is a utility to grab piles of photo files and organize them into a
+/// destination directory
 fn main() {
-    let opts = args_to_opts();
+    let opts = options::args_to_opts();
 
     println!("scan {}", opts.in_dir);
 

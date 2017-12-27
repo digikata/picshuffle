@@ -25,8 +25,6 @@ Identical output file names (with different contents) are deconflicted by automa
 
 
 ## Todo
-* The unit tests can be finicky if the git client checkout doesn't preserve the
-  file creation date make the tests more robust
 * Generate dry run output which could be saved as a shell script as an alternate way of
   execution
 * Play with parallelizing the scan

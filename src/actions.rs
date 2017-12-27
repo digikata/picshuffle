@@ -1,4 +1,7 @@
-
+/*
+ * Copyright (c) 2017, Alan Chen
+ * See LICENCE file for BSD-2 terms
+ */
 
 use ignore::WalkBuilder;
 
@@ -27,7 +30,7 @@ pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
 {
     let mut h = Sha256::new();
 
-    const HASHBUFSZ: usize = 4096 * 16; 
+    const HASHBUFSZ: usize = 4096 * 16;
 
     let mut f = File::open(fname).expect("open file");
 
@@ -256,7 +259,6 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 
     let mut clist: CopyList = Vec::new();
 
-    
     // track unique hash contents
     let mut hm = HashMap::<Vec<u8>, &str>::new();
 
