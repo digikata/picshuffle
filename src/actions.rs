@@ -57,7 +57,8 @@ pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
     out
 }
 
-pub type ScanData = Vec<(String, Vec<u8>)>;
+pub type ScanPair = (String, Vec<u8>);
+pub type ScanData = Vec<ScanPair>;
 
 pub fn scan_path(opts: &Options) -> ScanData
 {
@@ -80,7 +81,7 @@ pub fn scan_path(opts: &Options) -> ScanData
     }
 
     let mut sd: ScanData = Vec::new();
-    for p in vdat.iter() {
+    for p in &vdat {
         sd.push((p.clone(), hash_file(p, opts.fast_hash)));
     }
     sd
@@ -102,8 +103,8 @@ fn get_fs_create_date(path: &str) -> chrono::Date<Local>
             md.modified().expect("Can't access creation or modification time")
         }
     };
-    let crdate = chrono::DateTime::<Local>::from(crtime_sys).date();
-    crdate
+    
+    chrono::DateTime::<Local>::from(crtime_sys).date()
 }
 
 fn conv_field_datetime(fld: &exif::Field) -> Option<exif::DateTime>
@@ -189,7 +190,7 @@ fn checked_add_to_copylist(clist: &mut CopyList, outpaths: &mut HashSet<String>,
         let mut fidx = 1;
 
         let fname = match pdst.file_stem() {
-            Some(_stem) => _stem.to_str().unwrap().clone(),
+            Some(_stem) => _stem.to_str().unwrap(),
             None => "",
         };
         let ext = match pdst.extension() {
@@ -251,7 +252,7 @@ fn make_outpath(opts: &Options, outdir: &str, srcpath: &str) -> PathBuf
 
 /// filter out repeated files based on their hash
 /// and transform it to (src, dst) copy commands
-pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
+pub fn filter_repeated(opts: &Options, scandata: &[ScanPair]) -> CopyList
 {
     use std::collections::HashMap;
 
@@ -278,7 +279,7 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
                 // no point doing more comparison the files were full hashes already
                 continue;
             }
-            let existing_src = hm.get(h).unwrap();
+            let existing_src = &hm[h];
             let full_hash_old = hash_file(existing_src, false);
             let full_hash_new = hash_file(&src, false);
 
@@ -301,7 +302,7 @@ pub fn filter_repeated(opts: &Options, scandata: &ScanData) -> CopyList
 
 
 /// execute a list of copy commands
-pub fn exec_copies(cplist: &CopyList)
+pub fn exec_copies(cplist: &[CopyPair])
 {
     use std::fs::copy;
 
@@ -326,7 +327,7 @@ pub fn exec_copies(cplist: &CopyList)
 }
 
 /// generate a script of copy commands for unix systems
-pub fn script_copies_unix(cplist: &CopyList)
+pub fn script_copies_unix(cplist: &[CopyPair])
 {
     // track directories to create
     let mut create_dirs: HashSet<&str> = HashSet::new();
@@ -344,7 +345,7 @@ pub fn script_copies_unix(cplist: &CopyList)
     }
 
     // generate script lines
-    for dir in create_dirs.iter() {
+    for dir in &create_dirs {
         println!("mkdir -p '{}'", dir);
     }
     for cpair in cplist.iter() {
@@ -353,7 +354,7 @@ pub fn script_copies_unix(cplist: &CopyList)
 }
 
 
-pub fn generic_dry_run(cplist: &CopyList)
+pub fn generic_dry_run(cplist: &[CopyPair])
 {
     for cpair in cplist.iter() {
         println!("copy {} to {}", cpair.0, cpair.1);

@@ -2,8 +2,12 @@
  * Copyright (c) 2017, Alan Chen
  * See LICENCE file for BSD-2 terms
  */
+
+ //! spec ad manage utilities options
+
 use clap::{ App, Arg };
 
+/// store options selections parsed by args_to_opts()
 pub struct Options {
     pub fast_hash: bool,
     pub dry_run: bool,
