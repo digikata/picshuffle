@@ -60,6 +60,9 @@ pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
 pub type ScanPair = (String, Vec<u8>);
 pub type ScanData = Vec<ScanPair>;
 
+    // use std::cmp;
+    // use std::ffi::OsString;
+
 pub fn scan_path(opts: &Options) -> ScanData
 {
     let dir = &opts.in_dir;
@@ -79,6 +82,7 @@ pub fn scan_path(opts: &Options) -> ScanData
             }
         }
     }
+    vdat.sort_by(|a, b| a.cmp(b));
 
     let mut sd: ScanData = Vec::new();
     for p in &vdat {
@@ -124,7 +128,7 @@ fn conv_field_datetime(fld: &exif::Field) -> Option<exif::DateTime>
 /// exif
 fn get_exif_create_date(path: &str) -> Option<chrono::Date<Local>>
 {
-    let file = fs::File::open(path).expect(&format!("Couldn't open {}", path));
+    let file = fs::File::open(path).unwrap_or_else(|_| panic!("Couldn't open {}", path));
     let reader = match exif::Reader::new(&mut std::io::BufReader::new(&file)) {
         Ok(reader) => reader,
         Err(err) => {
@@ -445,7 +449,7 @@ mod test
             assert!(xp_files.contains_key(src), "Missing source {}", src);
 
             let val = xp_files.get_mut(src).unwrap();
-            assert_eq!(val.0, dst, "Dest file mismatch...\n   src: {}", src);
+            assert_eq!(val.0, dst, "Dest file mismatch...");
             val.1 = true;
         }
 
