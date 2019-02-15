@@ -23,7 +23,7 @@ use chrono::Datelike;
 use chrono::TimeZone;
 use std::convert::From;
 
-use options::Options;
+use crate::options::Options;
 
 
 pub fn hash_file(fname: &str, fast_hash: bool) -> Vec<u8>
@@ -370,13 +370,13 @@ pub fn generic_dry_run(cplist: &[CopyPair])
 mod test
 {
     #[cfg(test)]
-    use actions::CopyList;
+    use crate::actions::CopyList;
 
     #[test]
     fn t_scan_path()
     {
-        use actions::scan_path;
-        use options;
+        use crate::actions::scan_path;
+        use crate::options;
 
         let mut opts =options::default();
         opts.in_dir = String::from("test/ref");
@@ -405,9 +405,9 @@ mod test
     #[test]
     fn t_filter_repeated()
     {
-        use actions::scan_path;
-        use actions::filter_repeated;
-        use options;
+        use crate::actions::scan_path;
+        use crate::actions::filter_repeated;
+        use crate::options;
 
         let mut opts =options::default();
         opts.in_dir = String::from("test/ref");
@@ -463,8 +463,8 @@ mod test
 
     #[test]
     fn t_exec_copy() {
-        use actions::*;
-        use options;
+        use crate::actions::*;
+        use crate::options;
         use std::fs;
 
         let mut opts = options::default();
@@ -501,8 +501,8 @@ mod test
     #[test]
     fn t_deconflict_output_fname()
     {
-        use actions::*;
-        use options;
+        use crate::actions::*;
+        use crate::options;
 
         let mut opts = options::default();
         opts.in_dir = String::from("test/ref2");
@@ -537,8 +537,8 @@ mod test
     #[test]
     fn t_exif()
     {
-        use actions::*;
-        use options;
+        use crate::actions::*;
+        use crate::options;
 
         let mut opts = options::default();
         opts.ignore_exif = false;
