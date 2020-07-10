@@ -1,5 +1,5 @@
 [package]
-authors = ["Alan C <digikata@gmail.com>"]
+authors = ["Alan C <argot@digikata.com>"]
 name = "picshuffle"
 version = "0.1.7"
 edition = "2018"
